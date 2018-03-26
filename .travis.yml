@@ -25,6 +25,10 @@ env:
   - DJANGO="1.11" CRYPTOGRAPHY="2.0"
 
 matrix:
+  include:
+    - python: "3.5"
+      env:
+        - TOX_ENV=postgres
   exclude:
   - python: "2.7"
     env: DJANGO="1.9" CRYPTOGRAPHY="1.2"
@@ -66,7 +70,7 @@ before_script:
 
 # command to run tests, e.g. python setup.py test
 script:
-  - tox
+  - tox -e $TOX_ENV
 
 after_success:
   - coverage combine
