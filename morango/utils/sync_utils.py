@@ -277,9 +277,10 @@ def _dequeuing_delete_buffered_records(cursor, transfersession_id):
 
 def _dequeuing_merge_conflict_rmcb(cursor, transfersession_id):
     # transfer record max counters for records with merge conflicts + perform max
-    merge_conflict_rmc = """REPLACE INTO {rmc} (instance_id, counter, store_model_id)
+    merge_conflict_rmc = """INSERT INTO {rmc} (instance_id, counter, store_model_id)
                                 SELECT rmcb.instance_id, rmcb.counter, rmcb.model_uuid
                                 FROM {rmcb} AS rmcb, {store} AS store, {rmc} AS rmc, {buffer} AS buffer
+                                ON CONFLICT (instance_id, store_model_id) DO UPDATE SET (counter) = (rmcb.counter)
                                 /*Scope to a single record.*/
                                 WHERE store.id = rmcb.model_uuid
                                 AND store.id = rmc.store_model_id
@@ -302,12 +303,14 @@ def _dequeuing_merge_conflict_rmcb(cursor, transfersession_id):
 
 def _dequeuing_merge_conflict_buffer(cursor, current_id, transfersession_id):
     # transfer buffer serialized into conflicting store
-    merge_conflict_store = """REPLACE INTO {store} (id, serialized, deleted, last_saved_instance, last_saved_counter, model_name,
+    merge_conflict_store = """INSERT INTO {store} (id, serialized, deleted, last_saved_instance, last_saved_counter, model_name,
                                                     profile, partition, source_id, conflicting_serialized_data, dirty_bit, _self_ref_fk)
                                         SELECT store.id, store.serialized, store.deleted OR buffer.deleted, '{current_instance_id}',
                                                {current_instance_counter}, store.model_name, store.profile, store.partition, store.source_id,
                                                buffer.serialized || '\n' || store.conflicting_serialized_data, 1, store._self_ref_fk
                                         FROM {buffer} AS buffer, {store} AS store
+                                        ON CONFLICT (id)
+                                        DO UPDATE SET (serialized, deleted, last_saved_instance, last_saved_counter, conflicting_serialized_data, dirty_bit) = (store.serialized, store.deleted OR buffer.deleted, '{current_instance_id}', {current_instance_counter}, buffer.serialized || '\n' || store.conflicting_serialized_data, 1)
                                         /*Scope to a single record.*/
                                         WHERE store.id = buffer.model_uuid
                                         AND buffer.transfer_session_id = '{transfer_session_id}'
@@ -327,9 +330,10 @@ def _dequeuing_merge_conflict_buffer(cursor, current_id, transfersession_id):
 
 def _dequeuing_update_rmcs_last_saved_by(cursor, current_id, transfersession_id):
     # update or create rmc for merge conflicts with local instance id
-    merge_conflict_store = """REPLACE INTO {rmc} (instance_id, counter, store_model_id)
+    merge_conflict_store = """INSERT INTO {rmc} (instance_id, counter, store_model_id)
                             SELECT '{current_instance_id}', {current_instance_counter}, store.id
                             FROM {store} as store, {buffer} as buffer
+                            ON CONFLICT (instance_id, store_model_id) DO UPDATE SET (counter) = (rmcb.counter)
                             /*Scope to a single record.*/
                             WHERE store.id = buffer.model_uuid
                             AND buffer.transfer_session_id = '{transfer_session_id}'
