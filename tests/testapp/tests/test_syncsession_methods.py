@@ -249,6 +249,7 @@ class BufferIntoStoreTestCase(TestCase):
         for i in self.data['model4_rmcb_ids']:
             self.assertFalse(RecordMaxCounter.objects.filter(instance_id=i, store_model_id=self.data['model4']).exists())
         with connection.cursor() as cursor:
+            _dequeuing_insert_remaining_buffer(cursor, self.data['sc'].current_transfer_session.id)
             _dequeuing_insert_remaining_rmcb(cursor, self.data['sc'].current_transfer_session.id)
         for i in self.data['model4_rmcb_ids']:
             self.assertTrue(RecordMaxCounter.objects.filter(instance_id=i, store_model_id=self.data['model4']).exists())
