@@ -2,7 +2,7 @@
 Credits
 =======
 
-Development Lead and Copyright Holder
+Development Lead and Copyright Holders
 -------------------------------------
 
 * Learning Equality <info@learningequality.org>
